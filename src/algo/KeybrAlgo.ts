@@ -90,11 +90,11 @@ export class KeybrAlgo {
   private modifiersHeld: number = 0; // how many Shift/Alt keys are currently held
 
   constructor() {
-    this.resetProgress();
+    this.initEmptyState();
     this.load();
   }
 
-  public resetProgress() {
+  private initEmptyState() {
     this.activeCount = 3;
     for (const sym of this.symbolProgression) {
       this.charState[sym] = {
@@ -107,13 +107,17 @@ export class KeybrAlgo {
           hitCount: 0,
           missCount: 0,
         },
-        filter: makeFilter(0.1),
+        filter: makeFilter(0.3),
         sessionTime: 0,
         sessionCount: 0,
         sessionHits: 0,
         sessionMisses: 0,
       };
     }
+  }
+
+  public resetProgress() {
+    this.initEmptyState();
     localStorage.removeItem('cpp-keybr-progress');
   }
 
@@ -193,9 +197,15 @@ export class KeybrAlgo {
       const divisor = this.modifiersHeld + 1;
       timeToType = elapsed / divisor;
     }
-    this.lastKeystrokeTime = timeMs;
-    // modifiers are consumed after the character is typed (keybr clears after measure)
-    this.modifiersHeld = 0;
+
+    // Unlike real keybr (which has backspace to reset the clock), our app has no backspace.
+    // If we always reset the clock, a typo + immediate correction records only ~20ms (artificially fast).
+    // Instead: only advance the clock on CORRECT keystrokes, so the full time since the last
+    // correct character — including all wrong attempts — is charged to that character.
+    if (!typo) {
+      this.lastKeystrokeTime = timeMs;
+      this.modifiersHeld = 0;
+    }
 
     // Only track special characters in our progression
     if (!this.symbolProgression.includes(char)) return;
@@ -271,20 +281,29 @@ export class KeybrAlgo {
     }
   }
 
-  // ── Returns the focused (weakest) key among active keys ──────────────────────────
-  // guided.ts lines 96-105: lowest current confidence (not best) among active keys
   public getFocusedSymbol(): string {
     const active = this.symbolProgression.slice(0, this.activeCount);
-    let focused = active[0];
-    let lowestConfidence = this.charState[focused].stats.confidence ?? 0;
-    for (const sym of active) {
-      const conf = this.charState[sym].stats.confidence ?? 0;
-      if (conf < lowestConfidence) {
-        lowestConfidence = conf;
-        focused = sym;
+    
+    // Exact logic from keybr guided.ts lines 96-105:
+    // Only consider keys that haven't been mastered yet (bestConfidence < 1)
+    const unmastered = active.filter(sym => (this.charState[sym].stats.bestConfidence ?? 0) < 1);
+    
+    if (unmastered.length > 0) {
+      // Find the one with the absolutely lowest bestConfidence
+      let focused = unmastered[0];
+      let lowest = this.charState[focused].stats.bestConfidence ?? 0;
+      for (const sym of unmastered) {
+        const conf = this.charState[sym].stats.bestConfidence ?? 0;
+        if (conf < lowest) {
+          lowest = conf;
+          focused = sym;
+        }
       }
+      return focused;
     }
-    return focused;
+    
+    // Fallback if everything active is already mastered (e.g., just before unlock)
+    return active[active.length - 1];
   }
 
   public getActiveSymbols(): string[] {

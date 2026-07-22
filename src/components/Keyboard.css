@@ -47,7 +47,7 @@
 .key[data-finger="L4"] { border-bottom: 2px solid #fab387; } /* Left Ring - Peach */
 .key[data-finger="L3"] { border-bottom: 2px solid #f9e2af; } /* Left Middle - Yellow */
 .key[data-finger="L2"] { border-bottom: 2px solid #a6e3a1; } /* Left Index - Green */
-.key[data-finger="R2"] { border-bottom: 2px solid #94e2d5; } /* Right Index - Teal */
+.key[data-finger="R2"] { border-bottom: 2px solid #f5c2e7; } /* Right Index - Pink */
 .key[data-finger="R3"] { border-bottom: 2px solid #89dceb; } /* Right Middle - Sky */
 .key[data-finger="R4"] { border-bottom: 2px solid #89b4fa; } /* Right Ring - Blue */
 .key[data-finger="R5"] { border-bottom: 2px solid #cba6f7; } /* Right Pinky - Mauve */
@@ -91,6 +91,22 @@
   transform: translateY(2px);
   box-shadow: 0 0 0 transparent;
 }
+.key.active.homing::after {
+  background: var(--bg-primary, #11111b);
+}
+
+.key.homing::after {
+  content: '';
+  position: absolute;
+  bottom: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 14px;
+  height: 2px;
+  background: var(--text-secondary, #bac2de);
+  border-radius: 2px;
+  pointer-events: none;
+}
 
 /* Hands visualization */
 .hands-container {
@@ -126,15 +142,15 @@
 .finger-4 { height: 80px; } /* Ring */
 .finger-3 { height: 90px; } /* Middle */
 .finger-2 { height: 80px; } /* Index */
-.finger-1 { height: 40px; margin-left: 10px; transform: rotate(-30deg); transform-origin: bottom left; } /* Thumb L */
-.hand.right .finger-1 { margin-left: 0; margin-right: 10px; transform: rotate(30deg); transform-origin: bottom right; } /* Thumb R */
+.finger-1 { height: 40px; margin-left: 10px; } /* Thumb L */
+.hand.right .finger-1 { margin-left: 0; margin-right: 10px; } /* Thumb R */
 
 /* Finger specific colors */
 .finger-5.left { border-top: 3px solid #f38ba8; }
 .finger-4.left { border-top: 3px solid #fab387; }
 .finger-3.left { border-top: 3px solid #f9e2af; }
 .finger-2.left { border-top: 3px solid #a6e3a1; }
-.finger-2.right { border-top: 3px solid #94e2d5; }
+.finger-2.right { border-top: 3px solid #f5c2e7; }
 .finger-3.right { border-top: 3px solid #89dceb; }
 .finger-4.right { border-top: 3px solid #89b4fa; }
 .finger-5.right { border-top: 3px solid #cba6f7; }
@@ -145,7 +161,7 @@
 .finger.active.finger-4.left { background: #fab387; box-shadow: 0 0 15px rgba(250, 179, 135, 0.4); transform: translateY(-5px); }
 .finger.active.finger-3.left { background: #f9e2af; box-shadow: 0 0 15px rgba(249, 226, 175, 0.4); transform: translateY(-5px); }
 .finger.active.finger-2.left { background: #a6e3a1; box-shadow: 0 0 15px rgba(166, 227, 161, 0.4); transform: translateY(-5px); }
-.finger.active.finger-2.right { background: #94e2d5; box-shadow: 0 0 15px rgba(148, 226, 213, 0.4); transform: translateY(-5px); }
+.finger.active.finger-2.right { background: #f5c2e7; box-shadow: 0 0 15px rgba(245, 194, 231, 0.4); transform: translateY(-5px); }
 .finger.active.finger-3.right { background: #89dceb; box-shadow: 0 0 15px rgba(137, 220, 235, 0.4); transform: translateY(-5px); }
 .finger.active.finger-4.right { background: #89b4fa; box-shadow: 0 0 15px rgba(137, 180, 250, 0.4); transform: translateY(-5px); }
 .finger.active.finger-5.right { background: #cba6f7; box-shadow: 0 0 15px rgba(203, 166, 247, 0.4); transform: translateY(-5px); }

@@ -1,8 +1,6 @@
-# C++ Keybr ⌨️🚀
+# C++ Keybr 🧑🏻‍💻⌨️
 
 An adaptive, algorithm-driven touch-typing tutor specifically designed to help programmers master C++ special characters and complex Shift-key coordination.
-
-![C++ Keybr UI Preview](https://via.placeholder.com/800x400.png?text=C%2B%2B+Keybr+UI) <!-- Replace with a real screenshot of your app -->
 
 ## The Problem
 Standard typing tutors (like keybr.com or typing.com) are fantastic for learning the alphabet, but they completely ignore the heavy use of symbols required in programming. If you are coding in C++, you are constantly reaching for `{}`, `()`, `[]`, `<<`, `>>`, `::`, `&&`, and `||`. 

@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@300;400;600&display=swap');
+﻿@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@300;400;600&display=swap');
 
 :root {
   --bg: #0f172a;
@@ -225,3 +225,4 @@ main {
 .reset-btn:hover { 
   background: rgba(239, 68, 68, 0.2); 
 }
+
