@@ -49,85 +49,6 @@ export class SnippetGenerator {
     "Foo::Foo()", "class Foo : public Bar { };", "x ? a : b;", "return ok ? 1 : 0;"
   ];
 
-  private getHomeRowKey(char: string): string {
-    const map: Record<string, string> = {
-      '!': 'a', '@': 's', '#': 'd', '$': 'f', '%': 'f',
-      '^': 'j', '&': 'j', '*': 'k', '(': 'l', ')': ';',
-      '-': ';', '_': ';', '=': ';', '+': ';', '[': ';',
-      '{': ';', ']': ';', '}': ';', ';': 'l', ':': ';',
-      "'": ';', '"': ';', ',': 'k', '<': 'k', '.': 'l',
-      '>': 'l', '/': ';', '?': ';', '\\': ';', '|': ';'
-    };
-    return map[char] || 'f';
-  }
-
-  private generateAdvancedDrill(focusedChar: string, activeChars: string[]): string {
-    const letters = "abcdefghijklmnopqrstuvwxyz";
-    const getRandomLetter = (uppercase: boolean = false) => {
-      const l = letters[Math.floor(Math.random() * letters.length)];
-      return uppercase ? l.toUpperCase() : l;
-    };
-
-    // Logical pairs to build complex muscle memory
-    const pairs: Record<string, string[]> = {
-      '[': [']'], ']': ['['],
-      '{': ['}'], '}': ['{'],
-      '(': [')'], ')': ['('],
-      '<': ['>'], '>': ['<'],
-      "'": ['"'], '"': ["'"],
-      '-': ['='], '=': ['-'],
-      '_': ['+'], '+': ['_'],
-      '$': ['&'], '&': ['$'], // Opposite shift fingers
-      '%': ['^'], '^': ['%'], // Index finger stretches
-      '!': [';', ')'], ';': ['!', ')'] 
-    };
-
-    let relatedChar = focusedChar;
-    if (pairs[focusedChar]) {
-      const availablePairs = pairs[focusedChar].filter(c => activeChars.includes(c));
-      if (availablePairs.length > 0) {
-        relatedChar = availablePairs[Math.floor(Math.random() * availablePairs.length)];
-      }
-    }
-
-    const home1 = this.getHomeRowKey(focusedChar);
-    const home2 = this.getHomeRowKey(relatedChar);
-
-    const type = Math.floor(Math.random() * 6);
-
-    switch (type) {
-      case 0:
-        // Anchor phase (e.g. d#k* or f$f$)
-        return `${home1}${focusedChar}${home2}${relatedChar}`;
-      
-      case 1:
-        // Cross-keyboard sandwich (e.g. w[d] or c'x)
-        return `${getRandomLetter()}${focusedChar}${getRandomLetter()}`;
-        
-      case 2:
-        // Shift coordination with capitals (e.g. e-W= or S]Q[)
-        return `${getRandomLetter(Math.random() > 0.5)}${focusedChar}${getRandomLetter(true)}${relatedChar}`;
-        
-      case 3:
-        // Paired symbols wrapping (e.g. x<o> or }ww{)
-        return `${focusedChar}${getRandomLetter()}${getRandomLetter()}${relatedChar}`;
-        
-      case 4:
-        // Dense clusters / Repetition (e.g. $$&& or #dd*)
-        if (Math.random() > 0.5) {
-          return `${focusedChar}${focusedChar}${relatedChar}${relatedChar}`;
-        } else {
-          return `${focusedChar}${home1}${home1}${focusedChar}`;
-        }
-        
-      case 5:
-        // Spacing variations (e.g. !a a!a or a! ; ))
-        return `${getRandomLetter()}${focusedChar} ${focusedChar}${getRandomLetter()}`;
-    }
-    
-    return `${focusedChar}${home1}`;
-  }
-
   // Generates a sequence of words/snippets
   public generate(
     activeChars: string[], 
@@ -163,14 +84,8 @@ export class SnippetGenerator {
       const useFocused = focusedSnippets.length > 0 && Math.random() < 0.8;
       
       if (useFocused) {
-        // 25% chance to generate an advanced EdClub-style drill
-        // (Ensures the majority are still valid C++ snippets)
-        if (Math.random() < 0.25) {
-          result.push(this.generateAdvancedDrill(focusedChar, activeChars));
-        } else {
-          const randomIdx = Math.floor(Math.random() * focusedSnippets.length);
-          result.push(focusedSnippets[randomIdx]);
-        }
+        const randomIdx = Math.floor(Math.random() * focusedSnippets.length);
+        result.push(focusedSnippets[randomIdx]);
       } else {
         const pool = normalSnippets.length > 0 ? normalSnippets : validSnippets;
         const randomIdx = Math.floor(Math.random() * pool.length);

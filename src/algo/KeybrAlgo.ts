@@ -107,7 +107,7 @@ export class KeybrAlgo {
           hitCount: 0,
           missCount: 0,
         },
-        filter: makeFilter(0.3),
+        filter: makeFilter(0.2),
         sessionTime: 0,
         sessionCount: 0,
         sessionHits: 0,

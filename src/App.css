@@ -1,4 +1,4 @@
-﻿@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@300;400;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@300;400;600&display=swap');
 
 :root {
   --bg: #0f172a;
@@ -32,12 +32,19 @@ body {
 
 .app-container {
   width: 100%;
-  max-width: 1000px;
+  max-width: 1200px;
   padding: 2rem;
   outline: none; /* hide focus ring */
   display: flex;
   flex-direction: column;
   gap: 2rem;
+}
+
+.app-body {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 2rem;
+  align-items: start;
 }
 
 header {
@@ -226,3 +233,200 @@ main {
   background: rgba(239, 68, 68, 0.2); 
 }
 
+/* --- New Lessons Mode UI --- */
+.header-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.mode-toggle {
+  display: flex;
+  background: rgba(30, 41, 59, 0.8);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--card-border);
+  border-radius: 20px;
+  overflow: hidden;
+  padding: 4px;
+}
+
+.mode-toggle button {
+  background: transparent;
+  color: var(--text-muted);
+  border: none;
+  padding: 0.75rem 1.5rem;
+  font-family: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.mode-toggle button:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.mode-toggle button.active {
+  background: var(--primary);
+  color: white;
+  border-radius: 16px;
+}
+
+/* --- Animations --- */
+@keyframes fadeInSlide {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.stats-dashboard > * {
+  animation: fadeInSlide 0.3s ease-out forwards;
+}
+
+.typing-area {
+  animation: fadeInSlide 0.3s ease-out forwards;
+  /* (Keep existing typing-area styles as they are defined higher up in the file) */
+}
+
+.lessons-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 500px;
+  overflow-y: auto;
+  padding-right: 0.5rem;
+}
+
+/* Custom scrollbar for lessons list */
+.lessons-list::-webkit-scrollbar {
+  width: 6px;
+}
+.lessons-list::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
+}
+.lessons-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+}
+.lessons-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.lesson-card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 0.75rem;
+  padding: 1rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.lesson-card:hover {
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.lesson-card.active {
+  border-color: var(--primary);
+  background: rgba(59, 130, 246, 0.1);
+}
+
+.lesson-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.lesson-live-stats {
+  margin-top: 1.5rem;
+  font-size: 1.1rem;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+}
+.lesson-live-stats strong {
+  color: var(--text);
+}
+
+/* --- Daily Goal Widget --- */
+.daily-goal-widget {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 0.75rem;
+  padding: 1.2rem;
+  margin-bottom: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.daily-goal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.daily-goal-header h3 {
+  font-size: 1.1rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0;
+}
+
+.edit-goal-btn {
+  background: transparent;
+  border: 1px solid var(--card-border);
+  color: var(--text-muted);
+  padding: 0.3rem 0.6rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.edit-goal-btn:hover {
+  background: rgba(255,255,255,0.1);
+  color: var(--text);
+}
+
+.daily-goal-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.daily-goal-text {
+  display: flex;
+  align-items: baseline;
+  gap: 0.3rem;
+}
+
+.daily-goal-text .current-time {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #fbbf24; /* amber-400 */
+}
+
+.daily-goal-text .target-time {
+  font-size: 1rem;
+  color: var(--text-muted);
+}
+
+.progress-fill.daily-fill {
+  background: #fbbf24;
+}

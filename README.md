@@ -11,9 +11,10 @@ Standard typing tutors (like keybr.com or typing.com) are fantastic for learning
 ### Key Features
 * **Adaptive Learning Algorithm:** Tracks your typing speed down to the millisecond. If you struggle with the `&` key, the algorithm will dynamically weave more `&` symbols into your practice snippets until you master it.
 * **Realistic C++ Context:** You aren't just typing random symbols; you are typing valid C++ syntax, variable declarations, loops, and pointers.
-* **Advanced Muscle Memory Drills:** Interweaves specialized drills inspired by EdClub pedagogy (e.g., Cross-Keyboard Sandwiches and Shift-Coordination) to force proper touch-typing form.
+* **Lessons Mode:** Practice specific character pairs with static lessons designed to build initial muscle memory before throwing you into the adaptive practice.
+* **Daily Goal Tracking:** Set a daily practice goal (in minutes). The timer only tracks *active* typing time and ignores pauses longer than 12 seconds.
 * **Strict Shift-Key Enforcement:** Features a dynamic visual keyboard and hand overlay that lights up the exact finger you need to use, strictly enforcing opposite-hand Shift key usage.
-* **Local Storage Persistence:** All your stats, heatmaps, and unlock progress are saved directly in your browser.
+* **Local Storage Persistence:** All your stats, heatmaps, daily progress, and unlock progression are saved directly in your browser.
 
 ## How it Works
 The app uses a 100% confidence threshold based on a target typing speed of **35 WPM (175 CPM)**. 
