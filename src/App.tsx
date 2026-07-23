@@ -50,7 +50,7 @@ function App() {
   // Load new snippet, call onLessonComplete() first if there's a completed lesson
   const nextLesson = (lessonJustFinished: boolean) => {
     if (mode === 'lessons') {
-      const words = generateLessonSnippet(currentLessonId, 8);
+      const words = generateLessonSnippet(currentLessonId, 15);
       setText(words.join(" ") + " ");
       setCursorIdx(0);
       setErrors(new Set());
@@ -63,7 +63,7 @@ function App() {
     }
     const active = algo.getActiveSymbols();
     const focused = algo.getFocusedSymbol();
-    const words = generator.generate(active, focused, 8);
+    const words = generator.generate(active, focused, 15);
     setText(words.join(" ") + " ");
     setCursorIdx(0);
     setErrors(new Set());

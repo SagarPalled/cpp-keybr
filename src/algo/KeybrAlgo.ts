@@ -11,6 +11,7 @@
  *  - packages/keybr-lesson/lib/guided.ts          → unlock when ALL bestConfidence >= 1
  *                                                    focus = lowest current confidence
  */
+import { getKeyInfo } from '../utils/keyboardLayout';
 
 // ─── Exponential smoothing filter (alpha = 0.1), exact copy of keybr's makeFilter ───
 function makeFilter(alpha: number) {
@@ -88,6 +89,7 @@ export class KeybrAlgo {
   // timeToType = (timestamp_now - timestamp_prev) / (modifiers_held + 1)
   private lastKeystrokeTime: number = 0;
   private modifiersHeld: number = 0; // how many Shift/Alt keys are currently held
+  private lastValidChar: string | null = null; // track previous char for same-finger discount
 
   constructor() {
     this.initEmptyState();
@@ -118,6 +120,9 @@ export class KeybrAlgo {
 
   public resetProgress() {
     this.initEmptyState();
+    this.lastKeystrokeTime = 0;
+    this.modifiersHeld = 0;
+    this.lastValidChar = null;
     localStorage.removeItem('cpp-keybr-progress');
   }
 
@@ -193,7 +198,17 @@ export class KeybrAlgo {
     // timeToType = elapsed / (modifiers + 1)
     let timeToType = 0;
     if (this.lastKeystrokeTime > 0) {
-      const elapsed = timeMs - this.lastKeystrokeTime;
+      let elapsed = timeMs - this.lastKeystrokeTime;
+      
+      // Apply same-finger bigram relaxation (10% discount if consecutive chars use the same finger)
+      if (this.lastValidChar && this.lastValidChar !== char) {
+        const prevFinger = getKeyInfo(this.lastValidChar)?.finger;
+        const currFinger = getKeyInfo(char)?.finger;
+        if (prevFinger && currFinger && prevFinger === currFinger) {
+          elapsed *= 0.9; 
+        }
+      }
+
       const divisor = this.modifiersHeld + 1;
       timeToType = elapsed / divisor;
     }
@@ -205,6 +220,7 @@ export class KeybrAlgo {
     if (!typo) {
       this.lastKeystrokeTime = timeMs;
       this.modifiersHeld = 0;
+      this.lastValidChar = char;
     }
 
     // Only track special characters in our progression
