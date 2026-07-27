@@ -1,0 +1,73 @@
+.metrics-dashboard {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 1.1rem;
+  line-height: 1.6;
+  color: #c9d1d9;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.metric-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.metric-label {
+  color: #a0a0a0;
+  width: 130px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.metric-values {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.metric-item {
+  color: #c9d1d9;
+}
+
+.metric-val {
+  color: #988c7f; /* A muted warm gray/brown like in the screenshot */
+  margin-left: 4px;
+}
+
+.text-muted {
+  color: #6e7681;
+}
+
+.current-key-box {
+  background-color: #538048; /* Dark green box */
+  color: #aedd91; /* Light green text */
+  padding: 0 8px;
+  border-radius: 2px;
+  font-weight: bold;
+  margin-right: -8px; /* Offset the gap slightly */
+}
+
+/* Daily Goal Row Specifics */
+.daily-goal-row {
+  flex-grow: 1;
+  gap: 16px;
+}
+
+.dashboard-progress-track {
+  height: 6px;
+  background-color: #333333;
+  flex-grow: 1;
+  max-width: 400px;
+  border-radius: 3px;
+  overflow: hidden;
+  position: relative;
+}
+
+.dashboard-progress-fill {
+  height: 100%;
+  background-color: #4b4b4b;
+  transition: width 0.3s ease;
+}

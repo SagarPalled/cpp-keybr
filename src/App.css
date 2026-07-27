@@ -27,7 +27,8 @@ body {
   min-height: 100vh;
   display: flex;
   justify-content: center;
-  align-items: center;
+  align-items: flex-start;
+  padding-top: 4rem;
 }
 
 .app-container {
@@ -241,6 +242,12 @@ main {
   align-items: center;
   gap: 1rem;
   margin-top: 1rem;
+}
+
+.mode-toggle-container {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 2rem;
 }
 
 .mode-toggle {

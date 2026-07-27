@@ -3,6 +3,7 @@ import { KeybrAlgo } from './algo/KeybrAlgo';
 import { SnippetGenerator } from './algo/SnippetGenerator';
 import { LESSONS, generateLessonSnippet } from './algo/Lessons';
 import { Keyboard } from './components/Keyboard';
+import { MetricsDashboard } from './components/MetricsDashboard';
 import './App.css';
 
 interface DailyProgress {
@@ -200,34 +201,36 @@ function App() {
       tabIndex={0} 
       ref={containerRef}
     >
-      <header>
-        <div className="header-titles">
-          <h1>C++ Keybr</h1>
-          <p>Master programming symbols adaptively</p>
+      <div className="mode-toggle-container">
+        <div className="mode-toggle">
+          <button 
+            className={mode === 'practice' ? 'active' : ''} 
+            onClick={() => setMode('practice')}
+          >
+            Practice
+          </button>
+          <button 
+            className={mode === 'lessons' ? 'active' : ''} 
+            onClick={() => setMode('lessons')}
+          >
+            Lessons
+          </button>
+          <button 
+            className={mode === 'settings' ? 'active' : ''} 
+            onClick={() => setMode('settings')}
+          >
+            Settings
+          </button>
         </div>
-        <div className="header-controls">
-          <div className="mode-toggle">
-            <button 
-              className={mode === 'practice' ? 'active' : ''} 
-              onClick={() => setMode('practice')}
-            >
-              Practice
-            </button>
-            <button 
-              className={mode === 'lessons' ? 'active' : ''} 
-              onClick={() => setMode('lessons')}
-            >
-              Lessons
-            </button>
-            <button 
-              className={mode === 'settings' ? 'active' : ''} 
-              onClick={() => setMode('settings')}
-            >
-              Settings
-            </button>
-          </div>
-        </div>
-      </header>
+      </div>
+      {mode === 'practice' && (
+        <MetricsDashboard 
+          globalStats={algo.getGlobalStats()} 
+          focusedSymbol={focusedSymbol} 
+          focusedStats={stats[focusedSymbol] || {}} 
+          dailyProgress={dailyProgress} 
+        />
+      )}
       
       <div className="app-body">
         {mode === 'settings' ? (
@@ -328,24 +331,7 @@ function App() {
       </main>
 
       <aside className="stats-dashboard">
-        {/* Daily Goal Widget */}
-        <div className="daily-goal-widget">
-          <div className="daily-goal-header">
-            <h3>Daily Goal</h3>
-          </div>
-          <div className="daily-goal-progress">
-            <div className="daily-goal-text">
-              <span className="current-time">{Math.floor(dailyProgress.activeTimeMs / 60000)}m {Math.floor((dailyProgress.activeTimeMs % 60000) / 1000)}s</span>
-              <span className="target-time">/ {dailyProgress.targetMinutes}m</span>
-            </div>
-            <div className="progress-bar">
-              <div 
-                className="progress-fill daily-fill" 
-                style={{ width: `${Math.min(100, (dailyProgress.activeTimeMs / (dailyProgress.targetMinutes * 60000)) * 100)}%` }}
-              ></div>
-            </div>
-          </div>
-        </div>
+
 
         {mode === 'practice' ? (
           <>

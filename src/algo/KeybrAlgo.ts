@@ -418,4 +418,37 @@ export class KeybrAlgo {
     }
     return result;
   }
+
+  public getGlobalStats(): { wpm: number; accuracy: number; score: number } {
+    let totalHits = 0;
+    let totalMisses = 0;
+    let avgTimeAccumulator = 0;
+    let keysWithData = 0;
+
+    for (const sym of this.symbolProgression) {
+      const st = this.charState[sym].stats;
+      totalHits += st.hitCount;
+      totalMisses += st.missCount;
+      if (st.timeToType) {
+        avgTimeAccumulator += st.timeToType;
+        keysWithData++;
+      }
+    }
+
+    let wpm = 0;
+    if (keysWithData > 0) {
+      const avgMs = avgTimeAccumulator / keysWithData;
+      wpm = (60000 / avgMs) / 5;
+    }
+
+    let accuracy = 0;
+    const totalAttempts = totalHits + totalMisses;
+    if (totalAttempts > 0) {
+      accuracy = (totalHits / totalAttempts) * 100;
+    }
+
+    const score = totalHits * 10;
+
+    return { wpm, accuracy, score };
+  }
 }
