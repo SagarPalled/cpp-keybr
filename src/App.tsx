@@ -23,7 +23,7 @@ function App() {
   const [focusedSymbol, setFocusedSymbol] = useState(algo.getFocusedSymbol());
   
   // New Modes
-  const [mode, setMode] = useState<'practice' | 'lessons'>('practice');
+  const [mode, setMode] = useState<'practice' | 'lessons' | 'settings'>('practice');
   const [currentLessonId, setCurrentLessonId] = useState<number>(0);
   const [lessonStats, setLessonStats] = useState({ hits: 0, misses: 0, startTime: 0, lastWpm: 0, lastAccuracy: 0 });
 
@@ -45,10 +45,14 @@ function App() {
   });
   
   const lastKeystrokeRef = useRef<number>(0);
+  const sessionActiveTimeRef = useRef<number>(0);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Load new snippet, call onLessonComplete() first if there's a completed lesson
   const nextLesson = (lessonJustFinished: boolean) => {
+    algo.resetTimer();
+    lastKeystrokeRef.current = 0;
+    
     if (mode === 'lessons') {
       const words = generateLessonSnippet(currentLessonId, 15);
       setText(words.join(" ") + " ");
@@ -106,11 +110,7 @@ function App() {
       const delta = now - lastKeystrokeRef.current;
       // Only accumulate active time if pause is < 12 seconds
       if (delta < 12000) {
-        setDailyProgress(prev => {
-          const next = { ...prev, activeTimeMs: prev.activeTimeMs + delta };
-          localStorage.setItem('cpp-keybr-daily', JSON.stringify(next));
-          return next;
-        });
+        sessionActiveTimeRef.current += delta;
       }
     }
     lastKeystrokeRef.current = now;
@@ -138,6 +138,16 @@ function App() {
       }
 
       if (newIdx >= text.length) {
+        // Snippet complete — flush daily progress
+        if (sessionActiveTimeRef.current > 0) {
+          setDailyProgress(prev => {
+            const next = { ...prev, activeTimeMs: prev.activeTimeMs + sessionActiveTimeRef.current };
+            localStorage.setItem('cpp-keybr-daily', JSON.stringify(next));
+            return next;
+          });
+          sessionActiveTimeRef.current = 0; // reset for next snippet
+        }
+
         if (mode === 'lessons') {
           // Calculate final stats for this snippet
           setLessonStats(prev => {
@@ -209,12 +219,93 @@ function App() {
             >
               Lessons
             </button>
+            <button 
+              className={mode === 'settings' ? 'active' : ''} 
+              onClick={() => setMode('settings')}
+            >
+              Settings
+            </button>
           </div>
         </div>
       </header>
       
       <div className="app-body">
-        <main>
+        {mode === 'settings' ? (
+          <div className="settings-container">
+            <h2>Settings</h2>
+            <div className="setting-group">
+              <h3>Target typing speed: {Math.round(algo.settings.targetCpm / 5)} WPM</h3>
+              <p className="setting-desc">The target speed is used to measure the confidence level and the color of a letter. The closer to the target speed, the greener.</p>
+              <input 
+                type="range" 
+                min="10" max="100" 
+                value={Math.round(algo.settings.targetCpm / 5)}
+                onChange={(e) => {
+                  algo.updateSettings({ targetCpm: Number(e.target.value) * 5 });
+                  setStats({ ...algo.getStats() });
+                  setActiveSymbols(algo.getActiveSymbols());
+                  setFocusedSymbol(algo.getFocusedSymbol());
+                }}
+              />
+            </div>
+            
+            <div className="setting-group">
+              <label className="checkbox-label">
+                <input 
+                  type="checkbox" 
+                  checked={algo.settings.strictUnlock}
+                  onChange={(e) => {
+                    algo.updateSettings({ strictUnlock: e.target.checked });
+                    setStats({ ...algo.getStats() });
+                    setActiveSymbols(algo.getActiveSymbols());
+                    setFocusedSymbol(algo.getFocusedSymbol());
+                  }}
+                />
+                Unlock a next key only when: The previous keys are also above the target speed
+              </label>
+              <p className="setting-desc">If this option is disabled, you unlock a new key by raising only the focused key above the target speed. If enabled, you must also maintain all previous keys at the target speed.</p>
+            </div>
+
+            <div className="setting-group">
+              <h3>Daily goal: {dailyProgress.targetMinutes} minutes</h3>
+              <p className="setting-desc">Set the time you want to spend on the exercises daily.</p>
+              <input 
+                type="range" 
+                min="5" max="120" step="5"
+                value={dailyProgress.targetMinutes}
+                onChange={(e) => {
+                  setDailyProgress(prev => {
+                    const next = { ...prev, targetMinutes: Number(e.target.value) };
+                    localStorage.setItem('cpp-keybr-daily', JSON.stringify(next));
+                    return next;
+                  });
+                }}
+              />
+            </div>
+
+            <div className="setting-group">
+              <button 
+                className="reset-btn" 
+                onClick={() => {
+                  if (window.confirm("Are you sure you want to completely wipe all your typing stats and start over?")) {
+                    algo.resetProgress();
+                    localStorage.removeItem('cpp-keybr-daily');
+                    setDailyProgress(prev => ({ ...prev, activeTimeMs: 0 }));
+                    nextLesson(false);
+                    setMode('practice');
+                  }
+                }}
+              >
+                Reset Progress
+              </button>
+              <p className="setting-desc" style={{ marginTop: '0.5rem', color: 'var(--error)' }}>
+                Warning: This will permanently delete all your typing statistics and unlock progression.
+              </p>
+            </div>
+          </div>
+        ) : (
+          <>
+            <main>
           <div className="typing-area">
           {text.split('').map((char, i) => {
             let className = 'char ';
@@ -241,21 +332,6 @@ function App() {
         <div className="daily-goal-widget">
           <div className="daily-goal-header">
             <h3>Daily Goal</h3>
-            <button 
-              className="edit-goal-btn"
-              onClick={() => {
-                const newTarget = prompt("Enter your daily target in minutes:", dailyProgress.targetMinutes.toString());
-                if (newTarget && !isNaN(Number(newTarget)) && Number(newTarget) > 0) {
-                  setDailyProgress(prev => {
-                    const next = { ...prev, targetMinutes: Number(newTarget) };
-                    localStorage.setItem('cpp-keybr-daily', JSON.stringify(next));
-                    return next;
-                  });
-                }
-              }}
-            >
-              Edit
-            </button>
           </div>
           <div className="daily-goal-progress">
             <div className="daily-goal-text">
@@ -317,22 +393,9 @@ function App() {
             </div>
             <p className="unlock-hint">
               {activeSymbols.length < algo.symbolProgression.length
-                ? `Next unlock: best confidence ≥ 100% on all ${activeSymbols.length} active symbols`
+                ? `Next unlock: ${algo.settings.strictUnlock ? 'current' : 'best'} conf ≥ 100% on ${algo.settings.strictUnlock ? `all ${activeSymbols.length} active symbols` : 'focused symbol'}`
                 : '🎉 All symbols unlocked!'}
             </p>
-            <button 
-              className="reset-btn" 
-              onClick={() => {
-                if (window.confirm("Are you sure you want to completely wipe all your typing stats and start over?")) {
-                  algo.resetProgress();
-                  localStorage.removeItem('cpp-keybr-daily');
-                  setDailyProgress(prev => ({ ...prev, activeTimeMs: 0 }));
-                  nextLesson(false);
-                }
-              }}
-            >
-              Reset Progress
-            </button>
           </>
         ) : (
           <>
@@ -351,6 +414,8 @@ function App() {
           </>
         )}
       </aside>
+      </>
+      )}
       </div>
     </div>
   );

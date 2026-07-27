@@ -38,12 +38,19 @@ function makeFilter(alpha: number) {
 
 // ─── speedToTime: converts CPM → ms/char, exact copy from keybr's result.ts ─────────
 // speedToTime(cpm) = 1000 / (cpm / 60)
-// Target is expressed in CPM (chars per minute). Default keybr target = 175 CPM ≈ 35 WPM.
-const TARGET_CPM = 175;
-function speedToTime(cpm: number): number {
+export function speedToTime(cpm: number): number {
   return 1000 / (cpm / 60); // returns ms per char at that speed
 }
-const TARGET_TIME_TO_TYPE = speedToTime(TARGET_CPM); // ms per char at target speed
+
+export interface KeybrSettings {
+  targetCpm: number;
+  strictUnlock: boolean;
+}
+
+const DEFAULT_SETTINGS: KeybrSettings = {
+  targetCpm: 175, // 35 WPM default
+  strictUnlock: true
+};
 
 // ─── Outlier bounds from keybr's histogram.ts ────────────────────────────────────────
 const MIN_TIME_TO_TYPE = 40;    // < 40ms  → too fast (impossible), reject
@@ -77,6 +84,8 @@ type CharState = {
 };
 
 export class KeybrAlgo {
+  public settings: KeybrSettings;
+
   // Symbol progression: ordered from most to least frequently used in C++
   public readonly symbolProgression = [
     ';', '(', ')', '{', '}', '=', '!', '<', '>', '&', '*', '+', '-', '/', '[', ']', '"', "'", '_'
@@ -92,8 +101,29 @@ export class KeybrAlgo {
   private lastValidChar: string | null = null; // track previous char for same-finger discount
 
   constructor() {
+    this.settings = { ...DEFAULT_SETTINGS };
     this.initEmptyState();
     this.load();
+  }
+
+  public updateSettings(newSettings: Partial<KeybrSettings>) {
+    this.settings = { ...this.settings, ...newSettings };
+    this.recalculateConfidences();
+    this.recalculateProgression();
+    this.save();
+  }
+
+  private recalculateConfidences() {
+    const targetTime = speedToTime(this.settings.targetCpm);
+    for (const sym of this.symbolProgression) {
+      const state = this.charState[sym];
+      if (state.stats.timeToType) {
+        state.stats.confidence = targetTime / state.stats.timeToType;
+      }
+      if (state.stats.bestTimeToType) {
+        state.stats.bestConfidence = targetTime / state.stats.bestTimeToType;
+      }
+    }
   }
 
   private initEmptyState() {
@@ -138,6 +168,7 @@ export class KeybrAlgo {
   public save() {
     try {
       const data = {
+        settings: this.settings,
         activeCount: this.activeCount,
         chars: {} as Record<string, any>
       };
@@ -164,6 +195,9 @@ export class KeybrAlgo {
       if (!saved) return;
       
       const data = JSON.parse(saved);
+      if (data.settings) {
+        this.settings = { ...DEFAULT_SETTINGS, ...data.settings };
+      }
       if (typeof data.activeCount === 'number') {
         this.activeCount = data.activeCount;
       }
@@ -190,6 +224,12 @@ export class KeybrAlgo {
   // ── Called when Shift/Alt is released ─────────────────────────────────────────────
   public onModifierUp() {
     this.modifiersHeld = Math.max(0, this.modifiersHeld - 1);
+  }
+
+  // ── Reset the internal timer when a new snippet begins ──────────────────────────
+  public resetTimer() {
+    this.lastKeystrokeTime = 0;
+    this.lastValidChar = null;
   }
 
   // ── Record every keystroke (letter or special char) ───────────────────────────────
@@ -272,8 +312,9 @@ export class KeybrAlgo {
 
       // Confidence = speedToTime(target) / timeToType  (target.ts line 22)
       // > 1.0 means you're faster than target, < 1.0 means slower
-      state.stats.confidence = TARGET_TIME_TO_TYPE / state.stats.timeToType;
-      state.stats.bestConfidence = TARGET_TIME_TO_TYPE / state.stats.bestTimeToType;
+      const targetTime = speedToTime(this.settings.targetCpm);
+      state.stats.confidence = targetTime / state.stats.timeToType;
+      state.stats.bestConfidence = targetTime / state.stats.bestTimeToType;
 
       // Reset session accumulators
       state.sessionTime = 0;
@@ -291,25 +332,69 @@ export class KeybrAlgo {
   private checkProgression() {
     if (this.activeCount >= this.symbolProgression.length) return;
     const active = this.symbolProgression.slice(0, this.activeCount);
-    const allMastered = active.every(sym => (this.charState[sym].stats.bestConfidence ?? 0) >= 1);
+    
+    let allMastered = false;
+    if (this.settings.strictUnlock) {
+      // Strict: EVERY active key must currently be at or above target speed
+      allMastered = active.every(sym => (this.charState[sym].stats.confidence ?? 0) >= 1);
+    } else {
+      // Relaxed: EVERY active key must have AT SOME POINT reached the target speed (bestConfidence)
+      allMastered = active.every(sym => (this.charState[sym].stats.bestConfidence ?? 0) >= 1);
+    }
+
     if (allMastered) {
       this.activeCount++;
     }
   }
 
+  // ── Re-evaluate the entire progression from scratch (used when settings change) ───
+  private recalculateProgression() {
+    let newActiveCount = 3; // base minimum
+    
+    while (newActiveCount < this.symbolProgression.length) {
+      const active = this.symbolProgression.slice(0, newActiveCount);
+      let allMastered = false;
+      
+      if (this.settings.strictUnlock) {
+        allMastered = active.every(sym => (this.charState[sym].stats.confidence ?? 0) >= 1);
+      } else {
+        allMastered = active.every(sym => (this.charState[sym].stats.bestConfidence ?? 0) >= 1);
+      }
+      
+      if (allMastered) {
+        newActiveCount++;
+      } else {
+        break; // Stop at the first key that fails the threshold
+      }
+    }
+    
+    this.activeCount = newActiveCount;
+  }
+
   public getFocusedSymbol(): string {
     const active = this.symbolProgression.slice(0, this.activeCount);
     
-    // Exact logic from keybr guided.ts lines 96-105:
-    // Only consider keys that haven't been mastered yet (bestConfidence < 1)
-    const unmastered = active.filter(sym => (this.charState[sym].stats.bestConfidence ?? 0) < 1);
+    // Only consider keys that haven't been mastered yet
+    const unmastered = active.filter(sym => {
+      if (this.settings.strictUnlock) {
+        return (this.charState[sym].stats.confidence ?? 0) < 1;
+      } else {
+        return (this.charState[sym].stats.bestConfidence ?? 0) < 1;
+      }
+    });
     
     if (unmastered.length > 0) {
-      // Find the one with the absolutely lowest bestConfidence
+      // Find the one with the absolutely lowest confidence (based on mode)
       let focused = unmastered[0];
-      let lowest = this.charState[focused].stats.bestConfidence ?? 0;
+      let lowest = this.settings.strictUnlock 
+        ? (this.charState[focused].stats.confidence ?? 0)
+        : (this.charState[focused].stats.bestConfidence ?? 0);
+        
       for (const sym of unmastered) {
-        const conf = this.charState[sym].stats.bestConfidence ?? 0;
+        const conf = this.settings.strictUnlock 
+          ? (this.charState[sym].stats.confidence ?? 0)
+          : (this.charState[sym].stats.bestConfidence ?? 0);
+          
         if (conf < lowest) {
           lowest = conf;
           focused = sym;
