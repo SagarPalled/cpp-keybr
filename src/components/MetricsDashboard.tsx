@@ -62,8 +62,12 @@ export const MetricsDashboard: React.FC<MetricsDashboardProps> = ({
             {globalStats.lessonStreaks.some(s => s.length > 0)
               ? globalStats.lessonStreaks
                   .filter(s => s.length > 0)
-                  .map(s => `${s.length} ${s.length === 1 ? 'lesson' : 'lessons'} with ${Math.round(s.level * 100)}% accuracy.`)
-                  .join(' ')
+                  .map(s => (
+                    <span key={s.level}>
+                      {s.length === 1 ? 'One lesson' : `${s.length} lessons`} with <span className="metric-val">{Math.round(s.level * 100)}%</span> accuracy.
+                    </span>
+                  ))
+                  .reduce((prev, curr) => [prev, ' ', curr] as any)
               : 'No accuracy streaks.'
             }
           </span>

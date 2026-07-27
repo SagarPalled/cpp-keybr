@@ -216,8 +216,12 @@ export class KeybrAlgo {
       if (typeof data.globalAccuracyEma === 'number') {
         this.globalAccuracyEma = data.globalAccuracyEma;
       }
-      if (Array.isArray(data.lessonStreaks)) {
-        this.lessonStreaks = data.lessonStreaks;
+      if (Array.isArray(data.lessonStreaks) && data.lessonStreaks.length === this.lessonStreaks.length) {
+        for (let i = 0; i < this.lessonStreaks.length; i++) {
+          if (typeof data.lessonStreaks[i].length === 'number') {
+            this.lessonStreaks[i].length = data.lessonStreaks[i].length;
+          }
+        }
       }
       
       for (const sym of this.symbolProgression) {
@@ -307,6 +311,21 @@ export class KeybrAlgo {
   // ── Call this when a snippet is completed (equivalent to end of a keybr lesson) ───
   // In keybr, stats are updated per-Result (per completed lesson), not keystroke-by-keystroke.
   public onLessonComplete() {
+    // Process accuracy streak for the completed lesson (snippet)
+    let snippetTotalKeys = 0;
+    let snippetMisses = 0;
+
+    for (const sym of this.symbolProgression) {
+      const state = this.charState[sym];
+      snippetTotalKeys += state.sessionHits;
+      snippetMisses += state.sessionMisses;
+    }
+
+    if (snippetTotalKeys > 0) {
+      const accuracy = Math.max(0, (snippetTotalKeys - snippetMisses) / snippetTotalKeys);
+      this.updateLessonStreaks(accuracy);
+    }
+
     for (const sym of this.symbolProgression) {
       const state = this.charState[sym];
       if (state.sessionCount === 0) {
@@ -342,21 +361,6 @@ export class KeybrAlgo {
       state.sessionCount = 0;
       state.sessionHits = 0;
       state.sessionMisses = 0;
-    }
-
-    // Process accuracy streak for the completed lesson (snippet)
-    let snippetTotalKeys = 0;
-    let snippetMisses = 0;
-
-    for (const sym of this.symbolProgression) {
-      const state = this.charState[sym];
-      snippetTotalKeys += state.sessionHits + state.sessionMisses;
-      snippetMisses += state.sessionMisses;
-    }
-
-    if (snippetTotalKeys > 0) {
-      const accuracy = Math.max(0, (snippetTotalKeys - snippetMisses) / snippetTotalKeys);
-      this.updateLessonStreaks(accuracy);
     }
 
     this.checkProgression();
@@ -396,7 +400,9 @@ export class KeybrAlgo {
     };
 
     // Start append from the lowest requirement level (level3, index 2)
-    appendToLevel(this.lessonStreaks.length - 1, accuracy);
+    if (!appendToLevel(this.lessonStreaks.length - 1, accuracy)) {
+      this.lessonStreaks[this.lessonStreaks.length - 1].length = 0;
+    }
   }
 
   // ── Unlock next character when ALL active keys have bestConfidence >= 1 ────────────

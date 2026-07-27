@@ -88,9 +88,10 @@ function App() {
   }, [text]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (mode === 'settings') return;
     // Track modifier keys so the algo can apply keybr's (elapsed / modifiers+1) formula
     if (e.key === 'Shift' || e.key === 'Alt' || e.key === 'AltGraph') {
-      algo.onModifierDown();
+      if (mode === 'practice') algo.onModifierDown();
       return;
     }
 
@@ -223,17 +224,142 @@ function App() {
           </button>
         </div>
       </div>
-      {mode === 'practice' && (
-        <MetricsDashboard 
-          globalStats={algo.getGlobalStats()} 
-          focusedSymbol={focusedSymbol} 
-          focusedStats={stats[focusedSymbol] || {}} 
-          dailyProgress={dailyProgress} 
-        />
-      )}
       
       <div className="app-body">
-        {mode === 'settings' ? (
+        {mode === 'practice' && (
+          <div className="practice-layout">
+            <MetricsDashboard 
+              globalStats={algo.getGlobalStats()} 
+              focusedSymbol={focusedSymbol} 
+              focusedStats={stats[focusedSymbol] || {}} 
+              dailyProgress={dailyProgress} 
+            />
+            <div className="practice-content">
+              <main>
+                <div className="typing-area">
+                  {text.split('').map((char, idx) => {
+                    let className = 'char ';
+                    if (idx < cursorIdx) {
+                      className += errors.has(idx) ? 'error ' : 'typed ';
+                    }
+                    if (idx === cursorIdx) className += 'cursor ';
+                    return (
+                      <span key={idx} className={className}>
+                        {char === ' ' ? '\u00A0' : char}
+                      </span>
+                    );
+                  })}
+                </div>
+                <Keyboard expectedChar={text[cursorIdx] || ''} />
+              </main>
+              <aside className="stats-dashboard">
+                <h2>Symbol Mastery</h2>
+                <div className="symbols-grid">
+                  {algo.symbolProgression.map(sym => {
+                    const isActive = activeSymbols.includes(sym);
+                    const s = stats[sym];
+                    const isFocused = sym === focusedSymbol;
+                    const confValue = Math.min((s?.confidence ?? 0), 1);
+                    const bestConfValue = Math.min((s?.bestConfidence ?? 0), 1);
+                    return (
+                      <div 
+                        key={sym} 
+                        className={`symbol-card ${isFocused ? 'weakest' : ''} ${!isActive ? 'locked' : ''}`}
+                        onClick={() => {
+                          if (!isActive) {
+                            algo.forceUnlock(sym);
+                            nextLesson(false);
+                          }
+                        }}
+                        title={!isActive ? "Click to manually unlock this and all previous symbols" : ""}
+                      >
+                        <div className="sym-header">
+                          <span className="sym-char">{sym}</span>
+                          <span className="sym-conf">{isActive ? formatConfidence(s?.confidence) : 'Locked'}</span>
+                        </div>
+                        <div className="progress-bar" title="Current confidence">
+                          <div className="progress-fill" style={{ width: `${confValue * 100}%` }}></div>
+                        </div>
+                        <div className="progress-bar best" title="Best confidence ever">
+                          <div className="progress-fill best-fill" style={{ width: `${bestConfValue * 100}%` }}></div>
+                        </div>
+                        <div className="sym-details">
+                          {isActive 
+                            ? <small>{formatSpeed(s?.timeToType)} · {s?.hitCount} hits · {s?.missCount} err</small>
+                            : <small>Pending</small>
+                          }
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <p className="unlock-hint">
+                  {activeSymbols.length < algo.symbolProgression.length
+                    ? `Next unlock: ${algo.settings.strictUnlock ? 'current' : 'best'} conf ≥ 100% on ${algo.settings.strictUnlock ? `all ${activeSymbols.length} active symbols` : 'focused symbol'}`
+                    : '🎉 All symbols unlocked!'}
+                </p>
+                {activeSymbols.length > 2 && (
+                  <button 
+                    className="reset-btn"
+                    onClick={() => {
+                      if (window.confirm('Are you sure you want to lock all symbols except the first two? This will reset your progress.')) {
+                        algo.resetProgress();
+                        setStats({ ...algo.getStats() });
+                        setActiveSymbols(algo.getActiveSymbols());
+                        setFocusedSymbol(algo.getFocusedSymbol());
+                      }
+                    }}
+                  >
+                    Reset Progress
+                  </button>
+                )}
+              </aside>
+            </div>
+          </div>
+        )}
+
+        {mode === 'lessons' && (
+          <div className="practice-content">
+            <main>
+              <div className="typing-area">
+                {text.split('').map((char, idx) => {
+                  let className = 'char ';
+                  if (idx < cursorIdx) {
+                    className += errors.has(idx) ? 'error ' : 'typed ';
+                  }
+                  if (idx === cursorIdx) className += 'cursor ';
+                  return (
+                    <span key={idx} className={className}>
+                      {char === ' ' ? '\u00A0' : char}
+                    </span>
+                  );
+                })}
+                {lessonStats.lastWpm > 0 && (
+                  <div className="lesson-live-stats">
+                    Last snippet: <strong>{lessonStats.lastWpm} WPM</strong> | <strong>{lessonStats.lastAccuracy}%</strong> acc
+                  </div>
+                )}
+              </div>
+              <Keyboard expectedChar={text[cursorIdx] || ''} />
+            </main>
+            <aside className="stats-dashboard">
+              <h2>Lessons</h2>
+              <div className="lessons-list">
+                {LESSONS.map(lesson => (
+                  <div 
+                    key={lesson.id} 
+                    className={`lesson-card ${currentLessonId === lesson.id ? 'active' : ''}`}
+                    onClick={() => setCurrentLessonId(lesson.id)}
+                  >
+                    <span className="lesson-title">{lesson.title}</span>
+                  </div>
+                ))}
+              </div>
+            </aside>
+          </div>
+        )}
+
+        {mode === 'settings' && (
           <div className="settings-container">
             <h2>Settings</h2>
             <div className="setting-group">
@@ -306,105 +432,10 @@ function App() {
               </p>
             </div>
           </div>
-        ) : (
-          <>
-            <main>
-          <div className="typing-area">
-          {text.split('').map((char, i) => {
-            let className = 'char ';
-            if (i < cursorIdx) className += errors.has(i) ? 'error ' : 'typed ';
-            if (i === cursorIdx) className += 'cursor ';
-            
-            return (
-              <span key={i} className={className}>
-                {char === ' ' ? '\u00A0' : char}
-              </span>
-            );
-          })}
-          {mode === 'lessons' && lessonStats.lastWpm > 0 && (
-            <div className="lesson-live-stats">
-              Last snippet: <strong>{lessonStats.lastWpm} WPM</strong> | <strong>{lessonStats.lastAccuracy}%</strong> acc
-            </div>
-          )}
-        </div>
-        <Keyboard expectedChar={text[cursorIdx] || ''} />
-      </main>
-
-      <aside className="stats-dashboard">
-
-
-        {mode === 'practice' ? (
-          <>
-            <h2>Symbol Mastery</h2>
-            <div className="symbols-grid">
-              {algo.symbolProgression.map(sym => {
-                const isActive = activeSymbols.includes(sym);
-                const s = stats[sym];
-                const isFocused = sym === focusedSymbol;
-                const confValue = Math.min((s?.confidence ?? 0), 1);
-                const bestConfValue = Math.min((s?.bestConfidence ?? 0), 1);
-                return (
-                  <div 
-                    key={sym} 
-                    className={`symbol-card ${isFocused ? 'weakest' : ''} ${!isActive ? 'locked' : ''}`}
-                    onClick={() => {
-                      if (!isActive) {
-                        algo.forceUnlock(sym);
-                        nextLesson(false);
-                      }
-                    }}
-                    title={!isActive ? "Click to manually unlock this and all previous symbols" : ""}
-                  >
-                    <div className="sym-header">
-                      <span className="sym-char">{sym}</span>
-                      <span className="sym-conf">{isActive ? formatConfidence(s?.confidence) : 'Locked'}</span>
-                    </div>
-                    {/* Current confidence bar */}
-                    <div className="progress-bar" title="Current confidence">
-                      <div className="progress-fill" style={{ width: `${confValue * 100}%` }}></div>
-                    </div>
-                    {/* Best confidence bar (dimmer) */}
-                    <div className="progress-bar best" title="Best confidence ever">
-                      <div className="progress-fill best-fill" style={{ width: `${bestConfValue * 100}%` }}></div>
-                    </div>
-                    <div className="sym-details">
-                      {isActive 
-                        ? <small>{formatSpeed(s?.timeToType)} · {s?.hitCount} hits · {s?.missCount} err</small>
-                        : <small>Pending</small>
-                      }
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-            <p className="unlock-hint">
-              {activeSymbols.length < algo.symbolProgression.length
-                ? `Next unlock: ${algo.settings.strictUnlock ? 'current' : 'best'} conf ≥ 100% on ${algo.settings.strictUnlock ? `all ${activeSymbols.length} active symbols` : 'focused symbol'}`
-                : '🎉 All symbols unlocked!'}
-            </p>
-          </>
-        ) : (
-          <>
-            <h2>Lessons</h2>
-            <div className="lessons-list">
-              {LESSONS.map(lesson => (
-                <div 
-                  key={lesson.id} 
-                  className={`lesson-card ${currentLessonId === lesson.id ? 'active' : ''}`}
-                  onClick={() => setCurrentLessonId(lesson.id)}
-                >
-                  <span className="lesson-title">{lesson.title}</span>
-                </div>
-              ))}
-            </div>
-          </>
         )}
-      </aside>
-      </>
-      )}
       </div>
     </div>
   );
-}
+};
 
 export default App;

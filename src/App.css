@@ -42,6 +42,18 @@ body {
 }
 
 .app-body {
+  display: block;
+  width: 100%;
+}
+
+.practice-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  width: 100%;
+}
+
+.practice-content {
   display: grid;
   grid-template-columns: 1fr 320px;
   gap: 2rem;
@@ -397,7 +409,6 @@ main {
 
 /* --- Settings Page UI --- */
 .settings-container {
-  grid-column: 1 / -1; /* span full width across grid */
   background: var(--card-bg);
   backdrop-filter: blur(10px);
   border: 1px solid var(--card-border);
