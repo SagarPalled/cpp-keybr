@@ -9,7 +9,7 @@ interface DailyProgress {
 }
 
 interface MetricsDashboardProps {
-  globalStats: { wpm: number; accuracy: number; score: number };
+  globalStats: { wpm: number; accuracy: number; score: number, lessonStreaks: { level: number, length: number }[] };
   focusedSymbol: string;
   focusedStats: CharStats;
   dailyProgress: DailyProgress;
@@ -58,7 +58,15 @@ export const MetricsDashboard: React.FC<MetricsDashboardProps> = ({
       <div className="metric-row">
         <span className="metric-label">Accuracy:</span>
         <div className="metric-values">
-          <span className="metric-val text-muted">No accuracy streaks.</span>
+          <span className="metric-val text-muted">
+            {globalStats.lessonStreaks.some(s => s.length > 0)
+              ? globalStats.lessonStreaks
+                  .filter(s => s.length > 0)
+                  .map(s => `${s.length} ${s.length === 1 ? 'lesson' : 'lessons'} with ${Math.round(s.level * 100)}% accuracy.`)
+                  .join(' ')
+              : 'No accuracy streaks.'
+            }
+          </span>
         </div>
       </div>
 

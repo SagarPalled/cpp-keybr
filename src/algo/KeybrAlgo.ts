@@ -92,6 +92,14 @@ export class KeybrAlgo {
   ];
 
   private charState: Record<string, CharState> = {};
+  // Streak tracking (in lessons, not keystrokes)
+  // Mirrors original repo's MutableStreak logic
+  public lessonStreaks = [
+    { level: 1.0, length: 0 },
+    { level: 0.97, length: 0 },
+    { level: 0.95, length: 0 }
+  ];
+
   private activeCount: number = 3; // start with first 3 unlocked
 
   // For computing per-keystroke timeToType, exactly as keybr does:
@@ -99,6 +107,8 @@ export class KeybrAlgo {
   private lastKeystrokeTime: number = 0;
   private modifiersHeld: number = 0; // how many Shift/Alt keys are currently held
   private lastValidChar: string | null = null; // track previous char for same-finger discount
+
+  private globalAccuracyEma: number | null = null;
 
   constructor() {
     this.settings = { ...DEFAULT_SETTINGS };
@@ -170,6 +180,8 @@ export class KeybrAlgo {
       const data = {
         settings: this.settings,
         activeCount: this.activeCount,
+        globalAccuracyEma: this.globalAccuracyEma,
+        lessonStreaks: this.lessonStreaks,
         chars: {} as Record<string, any>
       };
       
@@ -200,6 +212,12 @@ export class KeybrAlgo {
       }
       if (typeof data.activeCount === 'number') {
         this.activeCount = data.activeCount;
+      }
+      if (typeof data.globalAccuracyEma === 'number') {
+        this.globalAccuracyEma = data.globalAccuracyEma;
+      }
+      if (Array.isArray(data.lessonStreaks)) {
+        this.lessonStreaks = data.lessonStreaks;
       }
       
       for (const sym of this.symbolProgression) {
@@ -270,6 +288,9 @@ export class KeybrAlgo {
     state.stats.hitCount++;
     if (typo) {
       state.stats.missCount++;
+      this.globalAccuracyEma = this.globalAccuracyEma === null ? 0 : this.globalAccuracyEma * 0.95;
+    } else {
+      this.globalAccuracyEma = this.globalAccuracyEma === null ? 1 : this.globalAccuracyEma * 0.95 + 1 * 0.05;
     }
 
     // Step 2: accumulate within current lesson session
@@ -323,8 +344,59 @@ export class KeybrAlgo {
       state.sessionMisses = 0;
     }
 
+    // Process accuracy streak for the completed lesson (snippet)
+    let snippetTotalKeys = 0;
+    let snippetMisses = 0;
+
+    for (const sym of this.symbolProgression) {
+      const state = this.charState[sym];
+      snippetTotalKeys += state.sessionHits + state.sessionMisses;
+      snippetMisses += state.sessionMisses;
+    }
+
+    if (snippetTotalKeys > 0) {
+      const accuracy = Math.max(0, (snippetTotalKeys - snippetMisses) / snippetTotalKeys);
+      this.updateLessonStreaks(accuracy);
+    }
+
     this.checkProgression();
     this.save();
+  }
+
+  // ── Original Keybr Streak Logic ──────────────────────────────────────────────────
+  private updateLessonStreaks(accuracy: number) {
+    const appendToLevel = (levelIndex: number, acc: number): boolean => {
+      if (levelIndex >= this.lessonStreaks.length) return false;
+      
+      const current = this.lessonStreaks[levelIndex];
+      const nextLength = levelIndex + 1 < this.lessonStreaks.length ? this.lessonStreaks[levelIndex + 1].length : 0;
+      const started = current.length > nextLength;
+
+      if (levelIndex - 1 >= 0) {
+        // This simulates 'next' (higher accuracy level) in the cascaded linked list
+        if (appendToLevel(levelIndex - 1, acc)) {
+          if (started) {
+            current.length++;
+          }
+          return true;
+        }
+        
+        if (!started) {
+          current.length += this.lessonStreaks[levelIndex - 1].length;
+        }
+        this.lessonStreaks[levelIndex - 1].length = 0;
+      }
+
+      if (acc >= current.level) {
+        current.length++;
+        return true;
+      }
+
+      return false;
+    };
+
+    // Start append from the lowest requirement level (level3, index 2)
+    appendToLevel(this.lessonStreaks.length - 1, accuracy);
   }
 
   // ── Unlock next character when ALL active keys have bestConfidence >= 1 ────────────
@@ -419,7 +491,7 @@ export class KeybrAlgo {
     return result;
   }
 
-  public getGlobalStats(): { wpm: number; accuracy: number; score: number } {
+  public getGlobalStats(): { wpm: number; accuracy: number; score: number, lessonStreaks: { level: number, length: number }[] } {
     let totalHits = 0;
     let totalMisses = 0;
     let avgTimeAccumulator = 0;
@@ -441,14 +513,14 @@ export class KeybrAlgo {
       wpm = (60000 / avgMs) / 5;
     }
 
-    let accuracy = 0;
+    let accuracy = 100;
     const totalAttempts = totalHits + totalMisses;
     if (totalAttempts > 0) {
-      accuracy = (totalHits / totalAttempts) * 100;
+      accuracy = (this.globalAccuracyEma ?? 1) * 100;
     }
 
     const score = totalHits * 10;
 
-    return { wpm, accuracy, score };
+    return { wpm, accuracy, score, lessonStreaks: this.lessonStreaks };
   }
 }
