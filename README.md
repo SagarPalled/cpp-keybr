@@ -12,12 +12,13 @@ Standard typing tutors (like keybr.com or typing.com) are fantastic for learning
 * **Adaptive Learning Algorithm:** Tracks your typing speed down to the millisecond. If you struggle with the `&` key, the algorithm will dynamically weave more `&` symbols into your practice snippets until you master it.
 * **Realistic C++ Context:** You aren't just typing random symbols; you are typing valid C++ syntax, variable declarations, loops, and pointers.
 * **Lessons Mode:** Practice specific character pairs with static lessons designed to build initial muscle memory before throwing you into the adaptive practice.
+* **Customizable Target Speed:** Adjust your target typing speed from 10 WPM to 100 WPM using the slider in the Settings page.
+* **Strict Unlock Mode:** Optional setting requiring 100% confidence on *all* currently active symbols simultaneously before unlocking the next character.
 * **Daily Goal Tracking:** Set a daily practice goal (in minutes). The timer only tracks *active* typing time and ignores pauses longer than 12 seconds.
-* **Strict Shift-Key Enforcement:** Features a dynamic visual keyboard and hand overlay that lights up the exact finger you need to use, strictly enforcing opposite-hand Shift key usage.
 * **Local Storage Persistence:** All your stats, heatmaps, daily progress, and unlock progression are saved directly in your browser.
 
 ## How it Works
-The app uses a 100% confidence threshold based on a target typing speed of **35 WPM (175 CPM)**. 
+The app uses a 100% confidence threshold based on your adjustable target typing speed (defaults to **35 WPM / 175 CPM**). 
 It starts you off with just 3 basic symbols (`;`, `(`, `)`). Once you prove you can type all active symbols at the target speed without looking, the algorithm automatically unlocks the next symbol in the progression sequence and begins integrating it into your lessons.
 
 ## Getting Started
