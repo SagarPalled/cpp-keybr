@@ -22,6 +22,7 @@ function App() {
   const [stats, setStats] = useState(algo.getStats());
   const [activeSymbols, setActiveSymbols] = useState(algo.getActiveSymbols());
   const [focusedSymbol, setFocusedSymbol] = useState(algo.getFocusedSymbol());
+  const [isIdle, setIsIdle] = useState(false);
   
   // New Modes
   const [mode, setMode] = useState<'practice' | 'lessons' | 'settings'>('practice');
@@ -47,12 +48,15 @@ function App() {
   
   const lastKeystrokeRef = useRef<number>(0);
   const sessionActiveTimeRef = useRef<number>(0);
+  const idleTimeoutRef = useRef<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Load new snippet, call onLessonComplete() first if there's a completed lesson
   const nextLesson = (lessonJustFinished: boolean) => {
     algo.resetTimer();
     lastKeystrokeRef.current = 0;
+    setIsIdle(false);
+    if (idleTimeoutRef.current) clearTimeout(idleTimeoutRef.current);
     
     if (mode === 'lessons') {
       const words = generateLessonSnippet(currentLessonId, 15);
@@ -89,6 +93,14 @@ function App() {
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (mode === 'settings') return;
+    
+    // Clear and restart the idle timer on any keystroke
+    if (idleTimeoutRef.current) clearTimeout(idleTimeoutRef.current);
+    setIsIdle(false);
+    idleTimeoutRef.current = window.setTimeout(() => {
+      setIsIdle(true);
+    }, 12000);
+
     // Track modifier keys so the algo can apply keybr's (elapsed / modifiers+1) formula
     if (e.key === 'Shift' || e.key === 'Alt' || e.key === 'AltGraph') {
       if (mode === 'practice') algo.onModifierDown();
@@ -120,17 +132,21 @@ function App() {
 
     if (isError) {
       setErrors(prev => new Set(prev).add(cursorIdx));
+      if (mode === 'lessons') {
+        setLessonStats(prev => ({ ...prev, misses: prev.misses + 1 }));
+      }
+      // Do not advance cursor or record step on error
+      return;
     }
     
     if (mode === 'practice') {
-      // Record stat for every keystroke
-      algo.recordKeystroke(expectedChar, isError, Date.now());
+      // Record stat ONLY when the correct key is typed (1 mistake per position rule)
+      algo.recordKeystroke(expectedChar, errors.has(cursorIdx), Date.now());
     }
 
-    if (!isError) {
-      const newIdx = cursorIdx + 1;
+    const newIdx = cursorIdx + 1;
       
-      if (mode === 'lessons') {
+    if (mode === 'lessons') {
         // Start timer on first valid keystroke
         setLessonStats(prev => ({
           ...prev,
@@ -141,25 +157,29 @@ function App() {
 
       if (newIdx >= text.length) {
         // Snippet complete — flush daily progress
-        if (sessionActiveTimeRef.current > 0) {
+        const finalSessionTime = sessionActiveTimeRef.current;
+        if (finalSessionTime > 0) {
           setDailyProgress(prev => {
-            const next = { ...prev, activeTimeMs: prev.activeTimeMs + sessionActiveTimeRef.current };
+            const next = { ...prev, activeTimeMs: prev.activeTimeMs + finalSessionTime };
             localStorage.setItem('cpp-keybr-daily', JSON.stringify(next));
             return next;
           });
-          sessionActiveTimeRef.current = 0; // reset for next snippet
         }
 
         if (mode === 'lessons') {
           // Calculate final stats for this snippet
           setLessonStats(prev => {
-            const timeMins = (Date.now() - prev.startTime) / 60000;
+            // Use active session time (which already excludes pauses > 12s) instead of raw elapsed time
+            const timeMins = finalSessionTime / 60000;
             const words = (prev.hits + 1) / 5; // standard 5 chars per word
             const wpm = timeMins > 0 ? Math.round(words / timeMins) : 0;
             const acc = Math.round(((prev.hits + 1) / ((prev.hits + 1) + prev.misses)) * 100);
             return { ...prev, lastWpm: wpm, lastAccuracy: acc };
           });
         }
+        
+        sessionActiveTimeRef.current = 0; // reset for next snippet
+        
         // Snippet complete — commit session stats then load next
         nextLesson(true);
       } else {
@@ -169,11 +189,6 @@ function App() {
           setStats({ ...algo.getStats() });
         }
       }
-    } else {
-      if (mode === 'lessons') {
-        setLessonStats(prev => ({ ...prev, misses: prev.misses + 1 }));
-      }
-    }
   };
 
   const handleKeyUp = (e: React.KeyboardEvent) => {
@@ -250,7 +265,7 @@ function App() {
                     );
                   })}
                 </div>
-                <Keyboard expectedChar={text[cursorIdx] || ''} />
+                <Keyboard expectedChar={text[cursorIdx] || ''} paused={(cursorIdx === 0 && errors.size === 0) || isIdle} />
               </main>
               <aside className="stats-dashboard">
                 <h2>Symbol Mastery</h2>
@@ -340,7 +355,7 @@ function App() {
                   </div>
                 )}
               </div>
-              <Keyboard expectedChar={text[cursorIdx] || ''} />
+              <Keyboard expectedChar={text[cursorIdx] || ''} paused={(cursorIdx === 0 && errors.size === 0) || isIdle} />
             </main>
             <aside className="stats-dashboard">
               <h2>Lessons</h2>

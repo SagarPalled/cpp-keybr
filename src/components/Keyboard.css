@@ -5,6 +5,13 @@
   gap: 20px;
   margin-top: 20px;
   width: 100%;
+  transition: filter 0.3s ease, opacity 0.3s ease;
+}
+
+.keyboard-container.paused {
+  filter: blur(4px);
+  opacity: 0.5;
+  pointer-events: none;
 }
 
 .keyboard {

@@ -6,9 +6,10 @@ import { HandsIndicator } from './HandsIndicator';
 
 interface KeyboardProps {
   expectedChar: string;
+  paused?: boolean;
 }
 
-export const Keyboard: React.FC<KeyboardProps> = ({ expectedChar }) => {
+export const Keyboard: React.FC<KeyboardProps> = ({ expectedChar, paused }) => {
   const keyInfo = getKeyInfo(expectedChar);
   
   const activeKeys = new Set<string>();
@@ -44,7 +45,7 @@ export const Keyboard: React.FC<KeyboardProps> = ({ expectedChar }) => {
   };
 
   return (
-    <div className="keyboard-container">
+    <div className={`keyboard-container ${paused ? 'paused' : ''}`}>
       <div className="keyboard">
         {allRows.map((row, i) => (
           <div key={i} className="keyboard-row">
