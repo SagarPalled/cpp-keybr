@@ -9,7 +9,7 @@ interface DailyProgress {
 }
 
 interface MetricsDashboardProps {
-  globalStats: { wpm: number; accuracy: number; score: number, lessonStreaks: { level: number, length: number }[] };
+  globalStats: { wpm: number; accuracy: number; symbolAccuracy: number; score: number, lessonStreaks: { level: number, length: number }[] };
   focusedSymbol: string;
   focusedStats: CharStats;
   dailyProgress: DailyProgress;
@@ -38,6 +38,9 @@ export const MetricsDashboard: React.FC<MetricsDashboardProps> = ({
           </span>
           <span className="metric-item">
             Accuracy: <span className="metric-val">{globalStats.accuracy.toFixed(2)}%</span>
+          </span>
+          <span className="metric-item">
+            Symbol Acc: <span className="metric-val">{globalStats.symbolAccuracy.toFixed(2)}%</span>
           </span>
         </div>
       </div>

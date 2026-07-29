@@ -109,6 +109,10 @@ export class KeybrAlgo {
   private lastValidChar: string | null = null; // track previous char for same-finger discount
 
   private globalAccuracyEma: number | null = null;
+  private symbolAccuracyEma: number | null = null;
+  
+  private sessionTotalChars: number = 0;
+  private sessionTotalMisses: number = 0;
 
   constructor() {
     this.settings = { ...DEFAULT_SETTINGS };
@@ -181,6 +185,7 @@ export class KeybrAlgo {
         settings: this.settings,
         activeCount: this.activeCount,
         globalAccuracyEma: this.globalAccuracyEma,
+        symbolAccuracyEma: this.symbolAccuracyEma,
         lessonStreaks: this.lessonStreaks,
         chars: {} as Record<string, any>
       };
@@ -215,6 +220,9 @@ export class KeybrAlgo {
       }
       if (typeof data.globalAccuracyEma === 'number') {
         this.globalAccuracyEma = data.globalAccuracyEma;
+      }
+      if (typeof data.symbolAccuracyEma === 'number') {
+        this.symbolAccuracyEma = data.symbolAccuracyEma;
       }
       if (Array.isArray(data.lessonStreaks) && data.lessonStreaks.length === this.lessonStreaks.length) {
         for (let i = 0; i < this.lessonStreaks.length; i++) {
@@ -254,6 +262,11 @@ export class KeybrAlgo {
     this.lastValidChar = null;
   }
 
+  // ── Resume timer from a paused state (e.g. idle or start of snippet) ────────────
+  public resumeTimer(timeMs: number) {
+    this.lastKeystrokeTime = timeMs;
+  }
+
   // ── Record every keystroke (letter or special char) ───────────────────────────────
   public recordKeystroke(char: string, typo: boolean, timeMs: number) {
     // Step 1: compute timeToType for this character (mirrors keybr's TimeToType.measure)
@@ -285,16 +298,26 @@ export class KeybrAlgo {
       this.lastValidChar = char;
     }
 
-    // Only track special characters in our progression
+    // Track overall accuracy using EVERY character (letters, spaces, and symbols)
+    this.sessionTotalChars++;
+    if (typo) this.sessionTotalMisses++;
+
+    if (typo) {
+      this.globalAccuracyEma = this.globalAccuracyEma === null ? 0 : this.globalAccuracyEma * 0.95;
+    } else {
+      this.globalAccuracyEma = this.globalAccuracyEma === null ? 1 : this.globalAccuracyEma * 0.95 + 1 * 0.05;
+    }
+
+    // Only track special characters in our progression for symbol specific stats
     if (!this.symbolProgression.includes(char)) return;
 
     const state = this.charState[char];
     state.stats.hitCount++;
     if (typo) {
       state.stats.missCount++;
-      this.globalAccuracyEma = this.globalAccuracyEma === null ? 0 : this.globalAccuracyEma * 0.95;
+      this.symbolAccuracyEma = this.symbolAccuracyEma === null ? 0 : this.symbolAccuracyEma * 0.95;
     } else {
-      this.globalAccuracyEma = this.globalAccuracyEma === null ? 1 : this.globalAccuracyEma * 0.95 + 1 * 0.05;
+      this.symbolAccuracyEma = this.symbolAccuracyEma === null ? 1 : this.symbolAccuracyEma * 0.95 + 1 * 0.05;
     }
 
     // Step 2: accumulate within current lesson session
@@ -311,20 +334,14 @@ export class KeybrAlgo {
   // ── Call this when a snippet is completed (equivalent to end of a keybr lesson) ───
   // In keybr, stats are updated per-Result (per completed lesson), not keystroke-by-keystroke.
   public onLessonComplete() {
-    // Process accuracy streak for the completed lesson (snippet)
-    let snippetTotalKeys = 0;
-    let snippetMisses = 0;
-
-    for (const sym of this.symbolProgression) {
-      const state = this.charState[sym];
-      snippetTotalKeys += state.sessionHits;
-      snippetMisses += state.sessionMisses;
+    // Process accuracy streak using OVERALL session accuracy
+    if (this.sessionTotalChars > 0) {
+      const overallAccuracy = Math.max(0, (this.sessionTotalChars - this.sessionTotalMisses) / this.sessionTotalChars);
+      this.updateLessonStreaks(overallAccuracy);
     }
-
-    if (snippetTotalKeys > 0) {
-      const accuracy = Math.max(0, (snippetTotalKeys - snippetMisses) / snippetTotalKeys);
-      this.updateLessonStreaks(accuracy);
-    }
+    
+    this.sessionTotalChars = 0;
+    this.sessionTotalMisses = 0;
 
     for (const sym of this.symbolProgression) {
       const state = this.charState[sym];
@@ -497,7 +514,7 @@ export class KeybrAlgo {
     return result;
   }
 
-  public getGlobalStats(): { wpm: number; accuracy: number; score: number, lessonStreaks: { level: number, length: number }[] } {
+  public getGlobalStats(): { wpm: number; accuracy: number; symbolAccuracy: number; score: number, lessonStreaks: { level: number, length: number }[] } {
     let totalHits = 0;
     let totalMisses = 0;
     let avgTimeAccumulator = 0;
@@ -520,13 +537,15 @@ export class KeybrAlgo {
     }
 
     let accuracy = 100;
+    let symbolAccuracy = 100;
     const totalAttempts = totalHits + totalMisses;
     if (totalAttempts > 0) {
       accuracy = (this.globalAccuracyEma ?? 1) * 100;
+      symbolAccuracy = (this.symbolAccuracyEma ?? 1) * 100;
     }
 
     const score = totalHits * 10;
 
-    return { wpm, accuracy, score, lessonStreaks: this.lessonStreaks };
+    return { wpm, accuracy, symbolAccuracy, score, lessonStreaks: this.lessonStreaks };
   }
 }

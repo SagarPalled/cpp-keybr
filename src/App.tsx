@@ -46,6 +46,21 @@ function App() {
     return { date: today, activeTimeMs: 0, targetMinutes: 15 };
   });
   
+  const [goalBannerVisible, setGoalBannerVisible] = useState(false);
+  const [goalNotified, setGoalNotified] = useState(() => dailyProgress.activeTimeMs >= dailyProgress.targetMinutes * 60000);
+
+  useEffect(() => {
+    const targetMs = dailyProgress.targetMinutes * 60000;
+    if (dailyProgress.activeTimeMs >= targetMs && !goalNotified) {
+      setGoalNotified(true);
+      setGoalBannerVisible(true);
+      const timer = setTimeout(() => setGoalBannerVisible(false), 5000);
+      return () => clearTimeout(timer);
+    } else if (dailyProgress.activeTimeMs < targetMs) {
+      setGoalNotified(false);
+    }
+  }, [dailyProgress.activeTimeMs, dailyProgress.targetMinutes, goalNotified]);
+  
   const lastKeystrokeRef = useRef<number>(0);
   const sessionActiveTimeRef = useRef<number>(0);
   const idleTimeoutRef = useRef<number | null>(null);
@@ -94,6 +109,8 @@ function App() {
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (mode === 'settings') return;
     
+    const wasPaused = (cursorIdx === 0 && errors.size === 0) || isIdle;
+
     // Clear and restart the idle timer on any keystroke
     if (idleTimeoutRef.current) clearTimeout(idleTimeoutRef.current);
     setIsIdle(false);
@@ -112,6 +129,17 @@ function App() {
     
     // Prevent default browser actions for space and quotes
     if (e.key === ' ' || e.key === "'" || e.key === '"') e.preventDefault();
+    
+    if (wasPaused) {
+      if (mode === 'lessons') {
+        setLessonStats(prev => ({
+          ...prev,
+          startTime: prev.startTime === 0 ? Date.now() : prev.startTime
+        }));
+      } else if (mode === 'practice') {
+        algo.resumeTimer(Date.now());
+      }
+    }
     
     const expectedChar = text[cursorIdx];
     const typedChar = e.key;
@@ -147,11 +175,9 @@ function App() {
     const newIdx = cursorIdx + 1;
       
     if (mode === 'lessons') {
-        // Start timer on first valid keystroke
         setLessonStats(prev => ({
           ...prev,
-          hits: prev.hits + 1,
-          startTime: prev.startTime === 0 ? Date.now() : prev.startTime
+          hits: prev.hits + 1
         }));
       }
 
@@ -449,6 +475,12 @@ function App() {
           </div>
         )}
       </div>
+
+      {goalBannerVisible && (
+        <div className="daily-goal-banner">
+          🎉 Daily Goal Reached! Great job! 🎉
+        </div>
+      )}
     </div>
   );
 };
