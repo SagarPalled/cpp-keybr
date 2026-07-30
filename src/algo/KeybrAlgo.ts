@@ -101,6 +101,7 @@ export class KeybrAlgo {
   ];
 
   private activeCount: number = 3; // start with first 3 unlocked
+  private manualUnlockCount: number = 3; // keys forced active by the user
 
   // For computing per-keystroke timeToType, exactly as keybr does:
   // timeToType = (timestamp_now - timestamp_prev) / (modifiers_held + 1)
@@ -142,6 +143,7 @@ export class KeybrAlgo {
 
   private initEmptyState() {
     this.activeCount = 3;
+    this.manualUnlockCount = 3;
     for (const sym of this.symbolProgression) {
       this.charState[sym] = {
         stats: {
@@ -173,7 +175,8 @@ export class KeybrAlgo {
   public forceUnlock(sym: string) {
     const idx = this.symbolProgression.indexOf(sym);
     if (idx >= 0 && idx >= this.activeCount) {
-      this.activeCount = Math.min(idx + 1, this.symbolProgression.length);
+      this.manualUnlockCount = Math.max(this.manualUnlockCount, idx + 1);
+      this.recalculateProgression();
       this.save();
     }
   }
@@ -184,6 +187,7 @@ export class KeybrAlgo {
       const data = {
         settings: this.settings,
         activeCount: this.activeCount,
+        manualUnlockCount: this.manualUnlockCount,
         globalAccuracyEma: this.globalAccuracyEma,
         symbolAccuracyEma: this.symbolAccuracyEma,
         lessonStreaks: this.lessonStreaks,
@@ -217,6 +221,9 @@ export class KeybrAlgo {
       }
       if (typeof data.activeCount === 'number') {
         this.activeCount = data.activeCount;
+      }
+      if (typeof data.manualUnlockCount === 'number') {
+        this.manualUnlockCount = data.manualUnlockCount;
       }
       if (typeof data.globalAccuracyEma === 'number') {
         this.globalAccuracyEma = data.globalAccuracyEma;
@@ -380,7 +387,7 @@ export class KeybrAlgo {
       state.sessionMisses = 0;
     }
 
-    this.checkProgression();
+    this.recalculateProgression();
     this.save();
   }
 
@@ -422,44 +429,42 @@ export class KeybrAlgo {
     }
   }
 
-  // ── Unlock next character when ALL active keys have bestConfidence >= 1 ────────────
-  // Exact logic from guided.ts lines 86-91 (recoverKeys=false branch, the default)
-  private checkProgression() {
-    if (this.activeCount >= this.symbolProgression.length) return;
-    const active = this.symbolProgression.slice(0, this.activeCount);
-    
-    let allMastered = false;
-    if (this.settings.strictUnlock) {
-      // Strict: EVERY active key must currently be at or above target speed
-      allMastered = active.every(sym => (this.charState[sym].stats.confidence ?? 0) >= 1);
-    } else {
-      // Relaxed: EVERY active key must have AT SOME POINT reached the target speed (bestConfidence)
-      allMastered = active.every(sym => (this.charState[sym].stats.bestConfidence ?? 0) >= 1);
-    }
-
-    if (allMastered) {
-      this.activeCount++;
-    }
-  }
-
-  // ── Re-evaluate the entire progression from scratch (used when settings change) ───
+  // ── Re-evaluate the entire progression from scratch ───
   private recalculateProgression() {
-    let newActiveCount = 3; // base minimum
+    let newActiveCount = 0;
     
-    while (newActiveCount < this.symbolProgression.length) {
-      const active = this.symbolProgression.slice(0, newActiveCount);
-      let allMastered = false;
+    for (let i = 0; i < this.symbolProgression.length; i++) {
+      const sym = this.symbolProgression[i];
+      const stats = this.charState[sym].stats;
       
-      if (this.settings.strictUnlock) {
-        allMastered = active.every(sym => (this.charState[sym].stats.confidence ?? 0) >= 1);
-      } else {
-        allMastered = active.every(sym => (this.charState[sym].stats.bestConfidence ?? 0) >= 1);
+      // 1. Min size or Manual Unlock limit
+      if (i < this.manualUnlockCount) {
+        newActiveCount = i + 1;
+        continue;
       }
       
-      if (allMastered) {
-        newActiveCount++;
+      // 2. Permanently unlocked (bestConfidence >= 1)
+      if ((stats.bestConfidence ?? 0) >= 1) {
+        newActiveCount = i + 1;
+        continue;
+      }
+      
+      // 3. Dynamic unlock criteria
+      const previousActive = this.symbolProgression.slice(0, newActiveCount);
+      let canInclude = false;
+      
+      if (this.settings.strictUnlock) {
+        // Strict mode: all previous active keys must have current confidence >= 1
+        canInclude = previousActive.every(s => (this.charState[s].stats.confidence ?? 0) >= 1);
       } else {
-        break; // Stop at the first key that fails the threshold
+        // Relaxed mode: all previous active keys must have best confidence >= 1
+        canInclude = previousActive.every(s => (this.charState[s].stats.bestConfidence ?? 0) >= 1);
+      }
+      
+      if (canInclude) {
+        newActiveCount = i + 1;
+      } else {
+        break; // Stop including new keys if criteria fails
       }
     }
     
