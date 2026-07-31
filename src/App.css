@@ -96,6 +96,9 @@ main {
   word-break: break-all;
   color: var(--text-muted);
   user-select: none;
+  height: 160px;
+  overflow-y: hidden;
+  position: relative;
 }
 
 .char {

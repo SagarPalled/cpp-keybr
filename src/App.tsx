@@ -12,6 +12,22 @@ interface DailyProgress {
   targetMinutes: number;
 }
 
+const joinWordsWithEnters = (words: string[]) => {
+  let result = "";
+  for (let i = 0; i < words.length; i++) {
+    result += words[i];
+    if (i < words.length - 1) {
+      const lastChar = words[i].slice(-1);
+      if ([';', '{', '}'].includes(lastChar)) {
+        result += Math.random() < 0.8 ? "\n" : " ";
+      } else {
+        result += Math.random() < 0.15 ? "\n" : " ";
+      }
+    }
+  }
+  return result + "\n";
+};
+
 function App() {
   const algo = useMemo(() => new KeybrAlgo(), []);
   const generator = useMemo(() => new SnippetGenerator(), []);
@@ -65,6 +81,19 @@ function App() {
   const sessionActiveTimeRef = useRef<number>(0);
   const idleTimeoutRef = useRef<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const typingAreaRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll the typing area to keep the cursor centered
+  useEffect(() => {
+    if (typingAreaRef.current) {
+      const cursorEl = typingAreaRef.current.querySelector('.cursor') as HTMLElement;
+      if (cursorEl) {
+        const container = typingAreaRef.current;
+        const targetScroll = cursorEl.offsetTop - container.clientHeight / 2 + cursorEl.offsetHeight / 2;
+        container.scrollTo({ top: Math.max(0, targetScroll), behavior: 'smooth' });
+      }
+    }
+  }, [cursorIdx, text]);
 
   // Load new snippet, call onLessonComplete() first if there's a completed lesson
   const nextLesson = (lessonJustFinished: boolean) => {
@@ -75,7 +104,7 @@ function App() {
     
     if (mode === 'lessons') {
       const words = generateLessonSnippet(currentLessonId, 15);
-      setText(words.join(" ") + " ");
+      setText(joinWordsWithEnters(words));
       setCursorIdx(0);
       setErrors(new Set());
       setLessonStats(prev => ({ ...prev, hits: 0, misses: 0, startTime: 0 }));
@@ -88,7 +117,7 @@ function App() {
     const active = algo.getActiveSymbols();
     const focused = algo.getFocusedSymbol();
     const words = generator.generate(active, focused, 15);
-    setText(words.join(" ") + " ");
+    setText(joinWordsWithEnters(words));
     setCursorIdx(0);
     setErrors(new Set());
     setActiveSymbols(active);
@@ -142,7 +171,8 @@ function App() {
     }
     
     const expectedChar = text[cursorIdx];
-    const typedChar = e.key;
+    let typedChar = e.key;
+    if (typedChar === 'Enter') typedChar = '\n';
     
     const isError = expectedChar !== typedChar;
 
@@ -277,7 +307,7 @@ function App() {
             />
             <div className="practice-content">
               <main>
-                <div className="typing-area">
+                <div className="typing-area" ref={typingAreaRef}>
                   {text.split('').map((char, idx) => {
                     let className = 'char ';
                     if (idx < cursorIdx) {
@@ -286,7 +316,7 @@ function App() {
                     if (idx === cursorIdx) className += 'cursor ';
                     return (
                       <span key={idx} className={className}>
-                        {char === ' ' ? '\u00A0' : char}
+                        {char === ' ' ? '\u00A0' : char === '\n' ? '↵\n' : char}
                       </span>
                     );
                   })}
@@ -362,7 +392,7 @@ function App() {
         {mode === 'lessons' && (
           <div className="practice-content">
             <main>
-              <div className="typing-area">
+              <div className="typing-area" ref={typingAreaRef}>
                 {text.split('').map((char, idx) => {
                   let className = 'char ';
                   if (idx < cursorIdx) {
@@ -371,7 +401,7 @@ function App() {
                   if (idx === cursorIdx) className += 'cursor ';
                   return (
                     <span key={idx} className={className}>
-                      {char === ' ' ? '\u00A0' : char}
+                      {char === ' ' ? '\u00A0' : char === '\n' ? '↵\n' : char}
                     </span>
                   );
                 })}

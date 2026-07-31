@@ -48,7 +48,7 @@ export interface KeybrSettings {
 }
 
 const DEFAULT_SETTINGS: KeybrSettings = {
-  targetCpm: 175, // 35 WPM default
+  targetCpm: 150, // 30 WPM default
   strictUnlock: true
 };
 

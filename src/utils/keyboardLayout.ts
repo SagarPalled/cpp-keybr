@@ -80,6 +80,7 @@ export const allRows = [row1, row2, row3, row4, row5];
 // Map a character to its required key ID and whether it needs shift
 export const getKeyInfo = (char: string) => {
   if (char === ' ') return { id: 'Space', shift: false, finger: 'L1' };
+  if (char === '\n') return { id: 'Enter', shift: false, finger: 'R5' };
   
   for (const row of allRows) {
     for (const key of row) {
