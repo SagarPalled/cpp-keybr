@@ -108,7 +108,9 @@ export class SnippetGenerator {
     "dp[i] = dp[i - 1] + dp[i - 2];",
 
     // ── Level 8: [ ] # ────────────────────────────────────────────────────
-    // Short drills
+    // Short drills (single bracket)
+    "a[", "dp[", "v[", "vis[", "adj[", "dist[", "grid[",
+    // Short drills (paired)
     "[i]", "[j]", "[0]", "[n]", "[u]", "[v]",
     "a[i]", "dp[i]", "v[i]", "vis[u]",
     // Context snippets
